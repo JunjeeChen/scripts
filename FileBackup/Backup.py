@@ -52,17 +52,30 @@ def md5(filename):
                 break
             m.update(file_data)
 
-    file.close()
     return m.hexdigest()
 
 # Method_2 Use the modified timestamp
 def getTimestamp(filename):
     stat = os.stat(filename)
-    print stat
+    #print stat
     return stat.st_mtime
 
+# Increment backup according to the timestamp of files
+def inc_backup_timestamp(src_dir, dst_dir):
+    contents = os.listdir(src_dir)
+    for fname in contents:
+        full_path = os.path.join(src_dir, fname)
+        full_path_bak = os.path.join(dst_dir, fname)
 
-def full_backup(src_dir, dst_dir, md5file):
+        # If file exists in dst_dir
+            # If full_path is a directory
+            # else compare the timestamp of full_path and full_path_bak (if exists)
+        # else recrusive copy to back directory
+
+
+
+# Full and Incremental backup to tar.gz file
+def full_backup_tar(src_dir, dst_dir, md5file):
     par_dir, base_dir = os.path.split(src_dir.rstrip('/'))
     back_name = '%s_full_%s.tar.gz' % (base_dir, time.strftime('%Y%m%d'))
     full_name = os.path.join(dst_dir, back_name)
@@ -83,7 +96,7 @@ def full_backup(src_dir, dst_dir, md5file):
         pickle.dump(md5dict, fobj)
 
 
-def incr_backup(src_dir, dst_dir, md5file):
+def incr_backup_tar(src_dir, dst_dir, md5file):
     par_dir, base_dir = os.path.split(src_dir.rstrip('/'))
     back_name = '%s_incr_%s.tar.gz' % (base_dir, time.strftime('%Y%m%d'))
     full_name = os.path.join(dst_dir, back_name)
@@ -112,18 +125,19 @@ def incr_backup(src_dir, dst_dir, md5file):
 
 if __name__ == "__main__":
     '''
-    src_dir = '/Users/xkops/gxb/'
+    src_dir = '/Users/ChenJu/workspace/'
     dst_dir = '/tmp/'
-    md5file = '/Users/xkops/md5.data'
+    md5file = '/Users/ChenJu/md5_workspace.data'
     if time.strftime('%a') == 'Mon':
         full_backup(src_dir, dst_dir, md5file)
     else:
         incr_backup(src_dir, dst_dir, md5file)
     '''
 
-    #full_backup(sys.argv[1], sys.argv[2], sys.argv[3])
+    #full_backup_tar(sys.argv[1], sys.argv[2], sys.argv[3])
+    #incr_backup_tar(sys.argv[1], sys.argv[2], sys.argv[3])
 
-    incr_backup(sys.argv[1], sys.argv[2], sys.argv[3])
+    inc_backup_timestamp(sys.argv[1], sys.argv[2])
 
 
 
