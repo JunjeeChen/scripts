@@ -1,0 +1,1 @@
+New code wrapped with "FWDL_UART_SUPPORT" implement the feature for firmwawre download under Diagnosic mode
