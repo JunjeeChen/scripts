@@ -1,9 +1,10 @@
 import os,sys
 import time
+import datetime
 import hashlib
 import tarfile
 import cPickle as pickle
-
+import shutil
 '''
 Notes:
 1) Ensure that the file is correctly closed under all circumstances.
@@ -17,6 +18,9 @@ Notes:
 
 4) cPickle (only for Python 2.7) or pickle -- serializing and de-serializing a Python object structure.
 '''
+
+def DebugOut():
+    return
 
 # Get all directories and files
 # Method_1 Recursive with os.listdir
@@ -60,6 +64,7 @@ def getTimestamp(filename):
     #print stat
     return stat.st_mtime
 
+
 # Increment backup according to the timestamp of files
 def inc_backup_timestamp(src_dir, dst_dir):
     contents = os.listdir(src_dir)
@@ -67,11 +72,77 @@ def inc_backup_timestamp(src_dir, dst_dir):
         full_path = os.path.join(src_dir, fname)
         full_path_bak = os.path.join(dst_dir, fname)
 
+        '''
+        ## Method_1 Check if the dst_file does exist
         # If file exists in dst_dir
+        if os.path.exists(full_path_bak):
             # If full_path is a directory
-            # else compare the timestamp of full_path and full_path_bak (if exists)
-        # else recrusive copy to back directory
+            if os.path.isdir(full_path_bak):
+                inc_backup_timestamp(full_path, full_path_bak)
 
+            # compare the timestamp of full_path and full_path_bak (if exists)
+            else:
+                # st_mtime is float and has 0.000001 diff sometimes for the same file
+                if  int(os.stat(full_path).st_mtime - os.stat(full_path_bak).st_mtime):
+                    shutil.copy2(full_path, full_path_bak)
+                #TODO: what we should do if the dst_file timestamp is newer than src_file timestamp
+                
+        # else recrusive copy to back directory
+        else:
+            # shutil.copytree only recrusivly copies the directory
+            if os.path.isdir(full_path):
+                shutil.copytree(full_path, full_path_bak)
+            else:
+                shutil.copy2(full_path, full_path_bak)
+        '''
+
+        ## Method_2  Check if src file is a directory
+        # If full_path is a directory
+        if  os.path.isdir(full_path):
+            # If back directory does not have this directory, recrusive copy
+            if not os.path.exists(full_path_bak):
+                shutil.copytree(full_path, full_path_bak)
+            else:
+                inc_backup_timestamp(full_path, full_path_bak)
+        # else full_path is a file
+        else:
+            # If full_path_back exists then compare the st_mtime
+            if os.path.exists(full_path_bak):
+                if  int(os.stat(full_path).st_mtime - os.stat(full_path_bak).st_mtime):
+                    shutil.copy2(full_path, full_path_bak)
+                #TODO: what we should do if the dst_file timestamp is newer than src_file timestamp
+            else:
+                shutil.copy2(full_path, full_path_bak)
+
+
+# get the md5 dictionary of src and dst
+# use the md5 hexdigital as key and do the comparsion
+def inc_backup_md5(src_dir, dst_dir):
+    md5src = {}
+    md5dst = {}
+
+    #TODO: Not finalizaed
+    # using "path" and remove the top-level directory (src_dir)
+    # Check missing directory in dst_dir
+    # and recrusive copy?
+    # recrusive dig into unmiss folder
+
+
+    #Get the md5 for file in src and dst
+    for path, folders, files in os.walk(dst_dir):
+        for fname in files:
+            full_path_bak = os.path.join(path, fname)
+            md5dst[full_path_bak] = md5(full_path_bak)
+
+    for path, folders, files in os.walk(src_dir):
+        for fname in files:
+            full_path = os.path.join(path, fname)
+            #key = full_path.rsplit(src_dir)
+            print full_path
+            print full_path.rsplit(src_dir)
+            #md5src[key] = md5(full_path)
+
+    #Compare the src & dst md5 dictionaries, if not equal, copy src file to dst
 
 
 # Full and Incremental backup to tar.gz file
@@ -123,6 +194,59 @@ def incr_backup_tar(src_dir, dst_dir, md5file):
             tar.add(key) # 'key' is file's full name
     tar.close()
 
+
+#TODO:
+#func_1 use src_path (dir or file) as arg1 and timestamp position as arg2 (prefix as default)
+#       change the file name by adding the timestamp
+
+#func_2 remove the timestamp string in the filename
+
+#func_3 backup favourite files or photos
+
+def change_filename_gmtime(src_path):
+    if not os.path.exists(src_path):
+        sys.exit('Err: %s does not exists!'%src_path)
+
+    if os.path.isfile(src_path):
+        file_mtime = os.stat(src_path).st_mtime
+        file_name = os.path.basename(src_path)
+        dir_name = os.path.dirname(src_path)
+
+        # Use 'time' module
+        #print "time Local: %s"%time.localtime(file_mtime)
+        #print "time UTC:   %s"%time.gmtime(file_mtime)
+
+        # Use 'datetime' module
+        #print "datetime Local: %s"%datetime.datetime.fromtimestamp(file_mtime)
+        #print "datetime UTC:   %s"%datetime.datetime.utcfromtimestamp(file_mtime)
+
+        file_gmtime = time.gmtime(file_mtime)
+        file_gmtime_name = "%04d%02d%02d_%02d%02d%02d_%s"%(file_gmtime.tm_year, file_gmtime.tm_mon, file_gmtime.tm_mday,
+                                                           file_gmtime.tm_hour, file_gmtime.tm_min, file_gmtime.tm_sec,
+                                                           file_name)
+
+        # Debug
+        # This could happen if the arg is file instead of directory
+        if os.getcwd() != dir_name:
+            print "Entering folder %s"%dir_name
+            os.chdir(dir_name)
+
+        os.rename(file_name, file_gmtime_name)
+
+        # Debug
+        print "Change file name %s to %s" % (file_name, file_gmtime_name)
+
+    else:
+        # listdir or walk
+        print "Entering folder %s" % src_path
+        os.chdir(src_path)
+
+        for f_path in os.listdir(src_path):
+            #print os.path.join(src_path, f_path)
+            change_filename_gmtime(os.path.join(src_path, f_path))
+
+    return
+
 if __name__ == "__main__":
     '''
     src_dir = '/Users/ChenJu/workspace/'
@@ -137,8 +261,9 @@ if __name__ == "__main__":
     #full_backup_tar(sys.argv[1], sys.argv[2], sys.argv[3])
     #incr_backup_tar(sys.argv[1], sys.argv[2], sys.argv[3])
 
-    inc_backup_timestamp(sys.argv[1], sys.argv[2])
+    #inc_backup_timestamp(sys.argv[1], sys.argv[2])
 
+    #inc_backup_md5(sys.argv[1], sys.argv[2])
 
-
+    change_filename_gmtime(sys.argv[1])
 
