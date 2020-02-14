@@ -2,6 +2,11 @@
 import os
 import requests
 from lxml import html
+import urllib
+import urllib2
+
+from selenium import webdriver
+from selenium.webdriver.support.ui import Select
 
 headers = {
     'Host': 'readingeggs.com.au',
@@ -25,30 +30,37 @@ def save(text, filename='temp', path='download'):
         f.close()
 
 
-def save_image(image_url):
-    print(image_url)
-    resp = requests.get(image_url)
+def save_file(file_url):
+    print(file_url)
+    resp = requests.get(file_url)
     page = resp.content
-    filename = image_url.split('/')[-1]
-    #print(filename)
+    filename = file_url.split('/')[-1]
+    print(filename)
     save(page, filename)
 
 
 def crawl(url):
-    resp = requests.get(url, headers=headers)
-    page = resp.content
-    root = html.fromstring(page)
-    #image_urls = root.xpath('//img/@src')
-    image_urls = root.xpath('//img[contains(@src, "/images/")]')
-    #print (image_urls)
+    driver = webdriver.Firefox()
+    driver.get("https://app.readingeggs.com/login")
+    driver.find_element_by_xpath('//*[@id="username"]').send_keys('username')
+    driver.find_element_by_xpath('//*[@id="password"]').send_keys('password')
+    driver.find_element_by_xpath('//*[@id="login-page"]/div[1]/div[1]/form/fieldset/input[5]').click()
 
-    for image_url in image_urls:
-        #print (image_url.attrib['src'])
-        #print(url+image_url.attrib['src'])
-        save_image(url+image_url.attrib['src'])
-        # break
+    driver.find_element_by_xpath('//*[@id="accordion-navbar"]/ul[1]/li[2]/a').click()
+    driver.find_element_by_xpath('//*[@id="accordion-navbar"]/ul[1]/li[2]/ul/li[1]/a').click()
+
+    # print(driver.page_source)
+    root = html.fromstring(driver.page_source)
+    #file_urls = root.xpath('//a[contains(@href, "/lesson_pdfs/student/readingeggs/")]')
+    #file_urls = root.xpath('//a[contains(@href, "/rex_comprehension/parent_worksheets/")]')
+    #file_urls = root.xpath('//a[contains(@href, "/rex_spelling/parent_worksheets/")]')
+    file_urls = root.xpath('//a[contains(@href, "/lesson_pdfs/student/mathseeds/")]')
+
+    for file_url in file_urls:
+        #print (file_url.attrib['href'])
+        save_file(file_url.attrib['href'])
+
+
 
 if __name__ == '__main__':
-    # 注意在运行之前，先确保该文件的同路径下存在一个download的文件夹, 用于存放爬虫下载的文件
-    url = 'https://readingeggs.com.au'
-    crawl(url)
+    crawl("https://app.readingeggs.com/login")
