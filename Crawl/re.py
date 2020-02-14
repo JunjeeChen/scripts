@@ -22,45 +22,46 @@ headers = {
                   'Chrome/74.0.3729.157 Safari/537.36',
 }
 
-def save(text, filename='temp', path='download'):
-    fpath = os.path.join(path, filename)
-    with open(fpath, 'wb') as  f:
-        print('output:', fpath)
+def save(text, filename='temp', subdir='', path='download'):
+    dirName = os.path.join(path, subdir)
+    if not os.path.exists(dirName):
+        os.mkdir(dirName)
+
+    fPath = os.path.join(path, filename)
+    with open(fPath, 'wb') as  f:
+        print('output:', fPath)
         f.write(text)
         f.close()
 
-
-def save_file(file_url):
-    print(file_url)
+def save_file(dir, file_url):
     resp = requests.get(file_url)
     page = resp.content
     filename = file_url.split('/')[-1]
-    print(filename)
-    save(page, filename)
-
+    save(page, dir + "\\" + filename, dir)
 
 def crawl(url):
-    driver = webdriver.Firefox()
+    driver = webdriver.Chrome()
     driver.get("https://app.readingeggs.com/login")
-    driver.find_element_by_xpath('//*[@id="username"]').send_keys('username')
-    driver.find_element_by_xpath('//*[@id="password"]').send_keys('password')
-    driver.find_element_by_xpath('//*[@id="login-page"]/div[1]/div[1]/form/fieldset/input[5]').click()
+    driver.find_element_by_xpath('//*[@id="username"]').send_keys('bcjm0322@hotmail.com')
+    driver.find_element_by_xpath('//*[@id="password"]').send_keys('1qazZAQ!')
+    driver.find_element_by_xpath('//*[@id="login-page"]/div[1]/div[1]/form/fieldset/input[6]').click()
 
     driver.find_element_by_xpath('//*[@id="accordion-navbar"]/ul[1]/li[2]/a').click()
     driver.find_element_by_xpath('//*[@id="accordion-navbar"]/ul[1]/li[2]/ul/li[1]/a').click()
 
-    # print(driver.page_source)
     root = html.fromstring(driver.page_source)
-    #file_urls = root.xpath('//a[contains(@href, "/lesson_pdfs/student/readingeggs/")]')
-    #file_urls = root.xpath('//a[contains(@href, "/rex_comprehension/parent_worksheets/")]')
-    #file_urls = root.xpath('//a[contains(@href, "/rex_spelling/parent_worksheets/")]')
-    file_urls = root.xpath('//a[contains(@href, "/lesson_pdfs/student/mathseeds/")]')
 
-    for file_url in file_urls:
-        #print (file_url.attrib['href'])
-        save_file(file_url.attrib['href'])
+    file_xpath = {'overview':'//a[contains(@href, "/lesson-overview/au/")]',
+                  'placement_tests':'//a[contains(@href, "/placement-tests/")]',
+                  'reading_eggs':'//a[contains(@href, "/lesson_pdfs/student/readingeggs/")]',
+                  'reading_eggspress_comprehension':'//a[contains(@href, "/rex_comprehension/parent_worksheets/")]',
+                  'reading_eggspress_spelling':'//a[contains(@href, "/rex_spelling/parent_worksheets/")]',
+                  'mathseeds':'//a[contains(@href, "/lesson_pdfs/student/mathseeds/")]'}
 
-
+    for key in file_xpath.keys():
+        file_urls = root.xpath(file_xpath[key])
+        for file_url in file_urls:
+            save_file(key, file_url.attrib['href'])
 
 if __name__ == '__main__':
     crawl("https://app.readingeggs.com/login")
